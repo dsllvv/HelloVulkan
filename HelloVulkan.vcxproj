@@ -152,10 +152,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Code\main.cpp" />
-    <ClCompile Include="Code\utility.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Code\utility.h" />
+    <ClInclude Include="Code\HelloTriangleApp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
