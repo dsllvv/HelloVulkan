@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -353,7 +354,7 @@ private:
 	{
 		uint32_t extensionsCount{};
 		vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionsCount, nullptr);
-		
+
 		std::vector<VkExtensionProperties> availableExtensions(extensionsCount);
 		vkEnumerateDeviceExtensionProperties(dev, nullptr, &extensionsCount, availableExtensions.data());
 
@@ -498,7 +499,6 @@ private:
 			actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
 			actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 			return actualExtent;
-			
 		}
 	}
 
@@ -567,13 +567,13 @@ private:
 				.image{ swapChainImages[i] },
 				.viewType{ VK_IMAGE_VIEW_TYPE_2D },
 				.format{ swapChainImageFormat },
-				.components{ 
+				.components{
 					.r{ VK_COMPONENT_SWIZZLE_IDENTITY },
 					.g{ VK_COMPONENT_SWIZZLE_IDENTITY },
 					.b{ VK_COMPONENT_SWIZZLE_IDENTITY },
 					.a{ VK_COMPONENT_SWIZZLE_IDENTITY }
 				},
-				.subresourceRange{ 
+				.subresourceRange{
 					.aspectMask{ VK_IMAGE_ASPECT_COLOR_BIT },
 					.baseMipLevel{ 0 },
 					.levelCount{ 1 },
@@ -587,8 +587,67 @@ private:
 		}
 	}
 
+	static std::vector<char> readFile(const std::string& filename)
+	{
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open())
+			throw std::runtime_error("Failed to open the file!");
+
+		size_t fileSize = static_cast<size_t>(file.tellg());
+		std::vector<char> buffer(fileSize);
+
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+
+		return buffer;
+	}
+
+	VkShaderModule createShaderModule(const std::vector<char>& code)
+	{
+		// TODO: What is this reinterpret_cast?
+		VkShaderModuleCreateInfo createInfo{
+			.sType{ VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO },
+			.codeSize{ code.size() },
+			.pCode{ reinterpret_cast<const uint32_t*>(code.data()) }
+		};
+
+		VkShaderModule shaderModule{};
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+			throw std::runtime_error("Failed to create a shader module!");
+
+		return shaderModule;
+	}
+
 	void createGraphicsPipeline()
 	{
+		auto vertShaderCode = readFile("shaders/vert.spv");
+		auto fragShaderCode = readFile("shaders/frag.spv");
 
+		VkShaderModule vertShaderModule{ createShaderModule(vertShaderCode) };
+		VkShaderModule fragShaderModule{ createShaderModule(fragShaderCode) };
+
+		VkPipelineShaderStageCreateInfo vertShaderStageInfo{
+			.sType{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+			.stage{ VK_SHADER_STAGE_VERTEX_BIT },
+			.module{ vertShaderModule },
+			.pName{ "main" }
+		};
+
+		VkPipelineShaderStageCreateInfo fragShaderStageInfo{
+			.sType{ VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+			.stage{ VK_SHADER_STAGE_FRAGMENT_BIT },
+			.module{ fragShaderModule },
+			.pName{ "main" }
+		};
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+		// to be continued...
+
+		vkDestroyShaderModule(device, fragShaderModule, nullptr);
+		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 	}
 };
